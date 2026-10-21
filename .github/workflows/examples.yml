@@ -1,0 +1,82 @@
+# Runs each example against the Prizerail sandbox, so they keep working as
+# the API changes. Secrets never reach pull requests from forks.
+name: examples
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: examples
+  cancel-in-progress: false
+
+env:
+  PRIZERAIL_API_KEY: ${{ secrets.PRIZERAIL_API_KEY }}
+  PRIZERAIL_CAMPAIGN: ${{ vars.PRIZERAIL_CAMPAIGN }}
+  ENTRANT_ID_KEY: ${{ secrets.ENTRANT_ID_KEY }}
+
+jobs:
+  node-worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: node-worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: node-worker/package-lock.json
+      - run: npm ci
+      # The script reads .env, so write one from the environment.
+      - run: printenv | grep -E '^(PRIZERAIL_API_KEY|PRIZERAIL_CAMPAIGN|ENTRANT_ID_KEY)=' > .env
+      - run: npm run send
+
+  python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python send_entries.py users.json
+
+  nextjs:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nextjs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: nextjs/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Add entries for a referral, twice, and read the page
+        run: |
+          npm start -- -p 3000 > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost:3000/ && break; sleep 1; done
+          body="{\"userId\":\"ci-user\",\"referralId\":\"ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\"}"
+          first=$(curl -sf -X POST http://localhost:3000/api/referrals -H 'content-type: application/json' -d "$body")
+          again=$(curl -sf -X POST http://localhost:3000/api/referrals -H 'content-type: application/json' -d "$body")
+          echo "first: $first"
+          echo "again: $again"
+          echo "$first" | grep -q '"counted":true'
+          echo "$again" | grep -q '"counted":false'
+          curl -sf http://localhost:3000/ | grep -q '<h1>'
+      - if: failure()
+        run: cat server.log

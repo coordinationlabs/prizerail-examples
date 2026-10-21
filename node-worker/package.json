@@ -1,0 +1,14 @@
+{
+  "name": "prizerail-example-node-worker",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "send": "node --env-file=.env send-entries.mjs users.json"
+  },
+  "dependencies": {
+    "prizerail": "^0.5.0"
+  }
+}
