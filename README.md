@@ -10,7 +10,7 @@ Small, working projects that use the [Prizerail partner API](https://docs.prizer
 
 ## Before you start
 
-1. **A sandbox account.** Ask us at [team@coordinationlabs.com](mailto:team@coordinationlabs.com). You get a `pr_sandbox_…` key and a sandbox campaign on [sandbox.prizerail.com](https://sandbox.prizerail.com), where draws run on Base Sepolia, a test network, and no real payouts are made.
+1. **A sandbox account.** [Sign up at sandbox.prizerail.com/signup](https://sandbox.prizerail.com/signup) with your company name and work email. The emailed link signs you in to the sandbox partner portal as the account's owner. Create a campaign there, then a `pr_sandbox_…` key under **Settings**, **API keys**. Sandbox draws run on Base Sepolia, a test network, and no real payouts are made.
 2. **A secret for entrant ids.** Prizerail publishes every locked entrant list, hashed, so each user is sent as an HMAC of their user id, never the id itself. Make a random key once and keep it fixed for the life of the campaign:
 
    ```sh
